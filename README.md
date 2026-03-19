@@ -75,49 +75,46 @@ Now, open the **SSH** terminal on your Google Cloud VM and follow these exact st
 2.  **Paste the following code:** _(I have optimized this for any domain, including standard alphanumeric and length validation)_.
     
 
-Bash
-
-```
 #!/bin/bash
 clear
 echo "=========================================================="
-echo "   YOURLS 2026 - COMPREHENSIVE SECURE DEPLOYMENT         "
+echo "   YOURLS 2026 - FULL STACK DEPLOYMENT (Alsunni Edition)  "
 echo "=========================================================="
 
-# 1. INPUT VALIDATION FUNCTIONS
-validate_domain() { [[ "$1" =~ ^([a-zA-Z0-9](([a-zA-Z0-9-]*[a-zA-Z0-9])?)\.)+[a-zA-Z]{2,}$ ]]; }
-validate_alpha() { [[ "$1" =~ ^[a-zA-Z0-9_]+$ ]]; }
+# 1. Interactive Input
+read -p "Enter your Domain (e.g. qr.alsunniNet.com): " DOMAIN
+read -p "Enter Database Name [yourls_db]: " DB_NAME
+DB_NAME=${DB_NAME:-yourls_db}
+read -p "Enter Database User [yourls_user]: " DB_USER
+DB_USER=${DB_USER:-yourls_user}
+read -sp "Enter Database Password: " DB_PASS
+echo ""
+read -p "Enter Admin Username: " ADMIN_USER
+read -sp "Enter Admin Password: " ADMIN_PASS
+echo -e "\n==========================================================\n"
 
-# 2. COLLECTING INPUTS
-while true; do
-    read -p "Enter your Domain (e.g. domain.com or qr.domain.com): " DOMAIN
-    if validate_domain "$DOMAIN"; then break; else echo "❌ Invalid domain."; fi
-done
-
-read -p "DB Name [yourls_db]: " DB_NAME; DB_NAME=${DB_NAME:-yourls_db}
-read -p "DB User [yourls_admin]: " DB_USER; DB_USER=${DB_USER:-yourls_admin}
-read -sp "DB Password (min 8 chars): " DB_PASS; echo ""
-read -p "YOURLS Admin Username: " YOURLS_USER
-read -sp "YOURLS Admin Password: " YOURLS_PASS; echo ""
-
-# 3. SYSTEM INSTALL
-echo "📦 Installing LAMP Stack..."
+# 2. System Update & Stack Install
+echo "📦 Installing Apache, MariaDB, and PHP 8.3..."
 sudo apt update && sudo apt upgrade -y
 sudo apt install apache2 mariadb-server php php-mysql php-curl php-gd php-xml php-mbstring git unzip -y
-sudo a2enmod rewrite ssl remoteip headers
+sudo a2enmod rewrite ssl remoteip
 
-# 4. DATABASE SETUP
-sudo mysql -e "CREATE DATABASE IF NOT EXISTS $DB_NAME; CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost'; FLUSH PRIVILEGES;"
+# 3. Database Configuration
+echo "🗄️  Setting up Database..."
+sudo mysql -e "CREATE DATABASE IF NOT EXISTS $DB_NAME;"
+sudo mysql -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';"
+sudo mysql -e "FLUSH PRIVILEGES;"
 
-# 5. SSL SETUP
+# 4. SSL & Cloudflare Certificates
 sudo mkdir -p /etc/apache2/ssl
-echo "📜 PASTE Cloudflare ORIGIN CERTIFICATE (PEM) then press Ctrl+D:"
-cat | sudo tee /etc/apache2/ssl/yourls.pem
-echo "🔑 PASTE Cloudflare PRIVATE KEY then press Ctrl+D:"
-cat | sudo tee /etc/apache2/ssl/yourls.key
+echo "📜 PASTE your Cloudflare ORIGIN CERTIFICATE (PEM) then press Ctrl+D:"
+cat | sudo tee /etc/apache2/ssl/yourls.pem > /dev/null
+echo "🔑 PASTE your Cloudflare PRIVATE KEY then press Ctrl+D:"
+cat | sudo tee /etc/apache2/ssl/yourls.key > /dev/null
 
-# 6. SECURE APACHE CONFIG
-# This section has been modified to block public file listings and sensitive files
+# 5. Apache Virtual Host with Security Headers
+echo "🌐 Configuring Web Server..."
 cat <<EOF | sudo tee /etc/apache2/sites-available/yourls.conf
 <VirtualHost *:80>
     ServerName $DOMAIN
@@ -132,55 +129,74 @@ cat <<EOF | sudo tee /etc/apache2/sites-available/yourls.conf
     SSLCertificateKeyFile /etc/apache2/ssl/yourls.key
     RemoteIPHeader CF-Connecting-IP
 
-    # --- SECURITY FIXES ---
-    # Disable directory browsing (prevents listing all files)
-    Options -Indexes +FollowSymLinks
-    
-    # Block access to sensitive deployment files and scripts
-    <FilesMatch "\.(sh|sql|pem|key|git|md|log|conf)$">
-        Require all denied
-    </FilesMatch>
-
     <Directory /var/www/html>
         AllowOverride All
         Require all granted
     </Directory>
-
-    # Protect the user directory from being listed
-    <Directory /var/www/html/user>
-        Options -Indexes
-    </Directory>
 </VirtualHost>
 EOF
 
-sudo a2ensite yourls.conf && sudo a2dissite 000-default.conf
+sudo a2ensite yourls.conf
+sudo a2dissite 000-default.conf
 echo "AllowEncodedSlashes On" | sudo tee -a /etc/apache2/apache2.conf
 
-# 7. YOURLS SETUP
-cd /var/www/html && sudo rm -rf *
+# 6. Deploy YOURLS Core
+echo "📥 Downloading YOURLS Core..."
+cd /var/www/html
+sudo rm -rf *
 sudo git clone https://github.com/YOURLS/YOURLS.git .
-sudo cp user/config-sample.php user/config.php
-sudo sed -i "s|'yourls'|'$DB_NAME'|g; s|'your-password'|'$DB_PASS'|g; s|'username' => 'password'|'$YOURLS_USER' => '$YOURLS_PASS'|g; s|'http://your-own-site.com'|'https://$DOMAIN'|g" user/config.php
-sudo sed -i '2i if (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) \&\& $_SERVER["HTTP_X_FORWARDED_PROTO"] == "https") { $_SERVER["HTTPS"] = "on"; }' user/config.php
 
-# 8. ROOT REDIRECT
-# This prevents the public from seeing a blank directory by sending them to the admin login
-echo "<?php header('Location: /admin/'); exit; ?>" | sudo tee /var/www/html/index.php
+# 7. Generate Secure config.php
+echo "🛠️  Building config.php from scratch..."
+COOKIE_KEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 
-# 9. PLUGINS
-cd user/plugins
+cat <<EOF | sudo tee /var/www/html/user/config.php > /dev/null
+<?php
+/** YOURLS Config Generated by Alsunni One-Click Deploy **/
+
+// Cloudflare HTTPS Fix
+if (isset(\$_SERVER['HTTP_X_FORWARDED_PROTO']) && \$_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') {
+    \$_SERVER['HTTPS'] = 'on';
+}
+
+define( 'YOURLS_DB_USER', '$DB_USER' );
+define( 'YOURLS_DB_PASS', '$DB_PASS' );
+define( 'YOURLS_DB_NAME', '$DB_NAME' );
+define( 'YOURLS_DB_HOST', 'localhost' );
+define( 'YOURLS_DB_PREFIX', 'yourls_' );
+define( 'YOURLS_SITE', 'https://$DOMAIN' );
+define( 'YOURLS_HOURS_OFFSET', 0 ); 
+define( 'YOURLS_UNIQUE_URLS', true );
+define( 'YOURLS_PRIVATE', true );
+define( 'YOURLS_COOKIEKEY', '$COOKIE_KEY' );
+
+\$yourls_user_passwords = array(
+    '$ADMIN_USER' => '$ADMIN_PASS'
+);
+
+// Character Set: Base 62 (Supports Hyphens)
+define( 'YOURLS_URL_CONVERT', 62 );
+\$yourls_reserved_URL = array( 'admin', 'about', 'contact', 'sample' );
+EOF
+
+# 8. Install Add-ons (Plugins)
+echo "🔌 Installing 2026-Standard Add-ons..."
+cd /var/www/html/user/plugins
 sudo git clone https://github.com/YOURLS/sample-qrcode.git qrcode
 sudo git clone https://github.com/williambargentball/YOURLS-Forward-Slash-In-Urls.git slashes
 sudo git clone https://github.com/ozh/yourls-fallback-url.git fallback
 sudo git clone https://github.com/gioxx/YOURLS-LogoSuite.git logosuite
 
-# 10. FINAL PERMISSIONS & CLEANUP
+# 9. Final Permissions & Clean-up
+echo "🔑 Hardening Permissions..."
 sudo chown -R www-data:www-data /var/www/html
-sudo chmod 600 /var/www/html/user/config.php
 sudo systemctl restart apache2
 
-echo "✅ Deployment Complete & Secured! Visit https://$DOMAIN/admin/ to install."
-
+echo "=========================================================="
+echo "✅ DEPLOYMENT COMPLETE!"
+echo "Site: https://$DOMAIN/admin/"
+echo "Instructions: Login and activate your 4 new plugins."
+echo "=========================================================="
 ```
 
 3.  **Run the script:**
