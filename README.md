@@ -89,8 +89,8 @@ read -p "Enter Database User [yourls_user]: " DB_USER
 DB_USER=${DB_USER:-yourls_user}
 read -sp "Enter Database Password: " DB_PASS
 echo ""
-read -p "Enter Admin Username: " ADMIN_USER
-read -sp "Enter Admin Password: " ADMIN_PASS
+read -p "Enter YOURLS Admin Username: " ADMIN_USER
+read -sp "Enter YOURLS Admin Password: " ADMIN_PASS
 echo -e "\n==========================================================\n"
 
 # 2. System Update & Stack Install
@@ -113,7 +113,7 @@ cat | sudo tee /etc/apache2/ssl/yourls.pem > /dev/null
 echo "🔑 PASTE your Cloudflare PRIVATE KEY then press Ctrl+D:"
 cat | sudo tee /etc/apache2/ssl/yourls.key > /dev/null
 
-# 5. Apache Virtual Host with Security Headers
+# 5. Apache Virtual Host
 echo "🌐 Configuring Web Server..."
 cat <<EOF | sudo tee /etc/apache2/sites-available/yourls.conf
 <VirtualHost *:80>
@@ -176,26 +176,34 @@ define( 'YOURLS_COOKIEKEY', '$COOKIE_KEY' );
 
 // Character Set: Base 62 (Supports Hyphens)
 define( 'YOURLS_URL_CONVERT', 62 );
-\$yourls_reserved_URL = array( 'admin', 'about', 'contact', 'sample' );
+\$yourls_reserved_URL = array( 'admin', 'about', 'contact' );
 EOF
 
 # 8. Install Add-ons (Plugins)
-echo "🔌 Installing 2026-Standard Add-ons..."
+echo "🔌 Installing Expanded Plugin Suite..."
 cd /var/www/html/user/plugins
+
+# Previous Plugins
 sudo git clone https://github.com/YOURLS/sample-qrcode.git qrcode
 sudo git clone https://github.com/williambargentball/YOURLS-Forward-Slash-In-Urls.git slashes
 sudo git clone https://github.com/ozh/yourls-fallback-url.git fallback
 sudo git clone https://github.com/gioxx/YOURLS-LogoSuite.git logosuite
 
+# New Plugins
+sudo git clone https://github.com/GautamGupta/YOURLS-Import-Export.git import-export
+sudo git clone https://github.com/timcrockford/302-instead.git redirect-302
+sudo git clone https://github.com/josheby/yourls-additional-charsets.git additional-charsets
+
 # 9. Final Permissions & Clean-up
 echo "🔑 Hardening Permissions..."
 sudo chown -R www-data:www-data /var/www/html
+sudo chmod -R 755 /var/www/html
 sudo systemctl restart apache2
 
 echo "=========================================================="
 echo "✅ DEPLOYMENT COMPLETE!"
 echo "Site: https://$DOMAIN/admin/"
-echo "Instructions: Login and activate your 4 new plugins."
+echo "New Add-ons installed: Import/Export, 302 Redirects, and Charsets."
 echo "=========================================================="
 ```
 
