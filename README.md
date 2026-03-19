@@ -74,7 +74,7 @@ Now, open the **SSH** terminal on your Google Cloud VM and follow these exact st
     
 2.  **Paste the following code:** _(I have optimized this for any domain, including standard alphanumeric and length validation)_.
     
-
+```
 #!/bin/bash
 clear
 echo "=========================================================="
