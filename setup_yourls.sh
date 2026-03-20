@@ -114,6 +114,8 @@ sudo git clone https://github.com/gioxx/YOURLS-LogoSuite.git logosuite
 sudo git clone https://github.com/GautamGupta/YOURLS-Import-Export.git import-export
 sudo git clone https://github.com/timcrockford/302-instead.git redirect-302
 sudo git clone https://github.com/josheby/yourls-additional-charsets.git additional-charsets
+sudo git clone https://github.com/neanrie/yourls.frontend-links.git frontend-links
+sudo git clone https://github.com/Pacmoney22/yourls-white-label.git white-label
 
 # 9. Cloudflare DDNS Setup
 echo "☁️  Setting up Automatic IP Updater..."
@@ -135,7 +137,7 @@ EOF
 sudo chmod +x /usr/local/bin/cloudflare-ddns.sh
 (crontab -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/cloudflare-ddns.sh") | crontab -
 
-# 10. Root Redirect & Branded 404
+# 10. Security: Root Redirect & Branded 404
 echo "🔒 Finishing Security & Branding..."
 cat <<EOF | sudo tee /var/www/html/index.php > /dev/null
 <?php header("Location: https://$DOMAIN/admin/"); exit; ?>
@@ -148,7 +150,7 @@ cat <<EOF | sudo tee /var/www/html/404.php > /dev/null
 EOF
 echo "ErrorDocument 404 /404.php" | sudo tee -a /var/www/html/.htaccess
 
-# 11. Permissions & Restart
+# 11. Final Permissions & Restart
 sudo chown -R www-data:www-data /var/www/html
 sudo chmod -R 755 /var/www/html
 sudo systemctl restart apache2
@@ -156,5 +158,5 @@ sudo systemctl restart apache2
 echo "=========================================================="
 echo "✅ DEPLOYMENT COMPLETE!"
 echo "Site: https://$DOMAIN/admin/"
-echo "DDNS: Active (5min sync)"
+echo "New Plugins: White-Label and Frontend-Links added."
 echo "=========================================================="
