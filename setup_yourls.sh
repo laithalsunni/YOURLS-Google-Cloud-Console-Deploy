@@ -115,7 +115,7 @@ sudo git clone https://github.com/GautamGupta/YOURLS-Import-Export.git import-ex
 sudo git clone https://github.com/timcrockford/302-instead.git redirect-302
 sudo git clone https://github.com/josheby/yourls-additional-charsets.git additional-charsets
 sudo git clone https://github.com/neanrie/yourls.frontend-links.git frontend-links
-sudo git clone https://github.com/Pacmoney22/yourls-white-label.git white-label
+sudo git clone https://github.com/gioxx/YOURLS-LogoSuite.git YOURLS-LogoSuite
 
 # 9. Cloudflare DDNS Setup
 echo "☁️  Setting up Automatic IP Updater..."
