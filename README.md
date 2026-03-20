@@ -62,6 +62,7 @@ This is a complete, end-to-end guide to deploying a professional, secure URL sho
 ## Phase 3: The Deployment Script
 
 **🚀 The Quick Deployment Command**
+
 Open your GCP SSH terminal and paste this command:
 
 Bash
@@ -70,6 +71,7 @@ curl -sSL https://raw.githubusercontent.com/laithalsunni/YOURLS-Google-Cloud-Con
 ```
 
 **manual Deployment Commands**
+
 Open the **SSH** terminal on your Google Cloud VM and follow these exact steps to run your custom, interactive script.
 
 1.  **Create the script file:**
