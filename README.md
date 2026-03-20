@@ -67,7 +67,8 @@ Open your GCP SSH terminal and paste this command:
 
 Bash
 ```
-curl -sSL https://raw.githubusercontent.com/laithalsunni/YOURLS-Google-Cloud-Console-Deploy/main/setup_yourls.sh -o setup.sh && chmod +x setup.sh && ./setup.sh
+curl -sSL https://raw.githubusercontent.com/laithalsunni/YOURLS-Google-Cloud-Console-Deploy/main/setup_yourls.sh | tr -d '\r' > setup.sh && chmod +x setup.sh && ./setup.sh
+
 ```
 
 **manual Deployment Commands**
